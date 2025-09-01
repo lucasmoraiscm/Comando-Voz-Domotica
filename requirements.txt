@@ -1,0 +1,9 @@
+google-generativeai>=0.5.0
+flask
+flask-socketio
+flask-cors
+python-dotenv
+pydub
+requests
+eventlet
+gunicorn
