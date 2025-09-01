@@ -144,6 +144,7 @@ Não inclua textos como "Claro, aqui está:" ou qualquer outra coisa fora do obj
         print("Processando resposta do Gemini...")
         # Envia a resposta do Gemini para processar a ação solicitada
         resposta_processada = processar_resposta_gemini(response.text)
+        print("Resposta do Gemini processada!")
 
         # Retorna o texto do processamento da ação solicitada
         return resposta_processada
