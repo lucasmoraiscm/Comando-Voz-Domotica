@@ -170,7 +170,7 @@ def listar_itens():
         return itens
     
     except requests.exceptions.RequestException as e:
-        print(f"Erro ao buscar dispositivos da API: {e}")
+        print(f"Erro ao buscar itens da API: {e}")
         return None
 
 
@@ -225,43 +225,48 @@ def processar_resposta_gemini(resposta_gemini):
     
 
 def buscar_id(entidade, nome):
-    # Define a url e a nomenclatura do atributo id de acordo com a entidade
-    match entidade:
-        case "Dispositivo":
-            url = "http://31.97.22.121:8080/dispositivos"
-            id_entidade = "idDispositivo"
-            
-        case "Cena":
-            url = "http://31.97.22.121:8080/cenas"
-            id_entidade = "idCena"
+    try:
+        # Define a url e a nomenclatura do atributo id de acordo com a entidade
+        match entidade:
+            case "Dispositivo":
+                url = "http://31.97.22.121:8080/dispositivos"
+                id_entidade = "idDispositivo"
+                
+            case "Cena":
+                url = "http://31.97.22.121:8080/cenas"
+                id_entidade = "idCena"
 
-        case "AcaoCena":
-            url = "http://31.97.22.121:8080/acaocenas"
-            id_entidade = "idAcao"
-            
-        case "Grupo":
-            url = "http://31.97.22.121:8080/grupos"
-            id_entidade = "idGrupo"
+            case "AcaoCena":
+                url = "http://31.97.22.121:8080/acaocenas"
+                id_entidade = "idAcao"
+                
+            case "Grupo":
+                url = "http://31.97.22.121:8080/grupos"
+                id_entidade = "idGrupo"
 
-        case _:
-            return "Entidade não encontrada"
+            case _:
+                return "Entidade não encontrada"
 
-    # Envia a requisição para a url
-    response = requests.get(url, timeout=10)
+        # Envia a requisição para a url
+        response = requests.get(url, timeout=10)
 
-    # Verifica se a requisição foi bem-sucedida
-    response.raise_for_status()
+        # Verifica se a requisição foi bem-sucedida
+        response.raise_for_status()
 
-    # Converte a resposta JSON em um dicionário Python
-    itens = response.json()
+        # Converte a resposta JSON em um dicionário Python
+        itens = response.json()
 
-    # Verifica se existe um item com o mesmo nome que foi especificado e retorna seu id
-    for item in itens:
-        if item["nome"] == nome:
-            return item[id_entidade]
-    
-    # Se não for encontrado um item com o mesmo nome que foi especificado não retorna um valor
-    return None
+        # Verifica se existe um item com o mesmo nome que foi especificado e retorna seu id
+        for item in itens:
+            if item["nome"] == nome:
+                return item[id_entidade]
+        
+        # Se não for encontrado um item com o mesmo nome que foi especificado não retorna um valor
+        return None
+
+    except requests.exceptions.RequestException as e:
+        print(f"Erro ao buscar itens para a entidade da API: {e}")
+        return "Falha ao buscar itens para a entidade."
 
 
 def executar_acao(entidade, acao, id):
