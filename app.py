@@ -265,8 +265,8 @@ def buscar_id(entidade, nome):
         return None
 
     except requests.exceptions.RequestException as e:
-        print(f"Erro ao buscar itens para a entidade da API: {e}")
-        return "Falha ao buscar itens para a entidade."
+        print(f"Erro ao buscar ID para o item: {e}")
+        return "Falha ao buscar ID para o item."
 
 
 def executar_acao(entidade, acao, id):
