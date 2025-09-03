@@ -36,7 +36,7 @@ def configurar_gemini():
         
         # Configura a chave da API do Gemini e define o modelo
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-2.5-flash")
 
         # Retorna o modelo configurado
         return model
@@ -57,7 +57,7 @@ def enviar_prompt_audio(audio):
         itens = listar_itens()
 
         if itens is None:
-            return "Erro: Não foi possível obter a lista de itens"
+            return {"error":"Não foi possível obter a lista de itens"}
         
         # Converte o dicionário para uma string JSON e depois para bytes
         itens_bytes = json.dumps(itens).encode('utf-8')
@@ -78,9 +78,12 @@ def enviar_prompt_audio(audio):
         # Carrega o áudio para o processamento
         audio_completo = AudioSegment.from_file(audio)
 
+        # Converte o áudio para um formato compatível (WAV)
+        audio_convertido = audio_completo.set_channels(1).set_frame_rate(16000)
+
         # Cria um áudio em memória
         audio_buffer = io.BytesIO()
-        audio_completo.export(audio_buffer, format="wav")
+        audio_convertido.export(audio_buffer, format="wav")
         audio_buffer.seek(0)
 
         print("Fazendo upload do áudio para o Gemini...")
@@ -151,7 +154,7 @@ Não inclua textos como "Claro, aqui está:" ou qualquer outra coisa fora do obj
 
     except Exception as e:
         print(f"Ocorreu um erro na API do Gemini: {e}")
-        return f"Erro ao processar com a API do Gemini: {e}"
+        return {"error":"Erro ao processar com a API do Gemini"}
 
 
 def listar_itens():
@@ -182,7 +185,7 @@ def processar_resposta_gemini(resposta_gemini):
         # Se não encontrar o JSON
         if not match:
             print(f"Nenhum JSON encontrado na resposta: {resposta_gemini}")
-            return "Não foi possível identificar a solicitação na resposta do assistente."
+            return {"error":"Não foi possível identificar a solicitação na resposta do assistente"}
         
         # Recebe o JSON e carrega sua estrutura para manipulação
         json_string = match.group(0)
@@ -195,7 +198,7 @@ def processar_resposta_gemini(resposta_gemini):
 
         # Se o JSON tiver informações nulas
         if entidade is None and nome is None and acao is None:
-            return "Não foi possível realizar a solicitação. Tente novamente"
+            return {"error":"Não foi possível realizar a solicitação. Tente novamente"}
         
         # Converte a ação para caixa baixa para evitar problemas em futuras requisições
         acao = acao.lower()
@@ -205,7 +208,7 @@ def processar_resposta_gemini(resposta_gemini):
 
         # Se não encontrar um id para o item especificado
         if not id_item:
-            return f"O item com nome '{nome}' não foi encontrado."
+            return {"error":"O item não foi encontrado"}
 
         # Executa a ação solicitada para o item especifico
         response_acao = executar_acao(entidade, acao, id_item)
@@ -215,13 +218,13 @@ def processar_resposta_gemini(resposta_gemini):
 
     except json.JSONDecodeError:
         print(f"Erro ao decodificar JSON da resposta: {resposta_gemini}")
-        return "A resposta do assistente não estava em um formato válido."
+        return {"error":"A resposta do assistente não estava em um formato válido"}
     except requests.exceptions.RequestException as e:
         print(f"Erro ao conectar com a API de dispositivos: {e}")
-        return "Falha ao buscar dispositivos."
+        return {"error":"Falha ao buscar dispositivos"}
     except Exception as e:
         print(f"Erro ao processar resposta: {e}")
-        return "Erro interno no processamento."
+        return {"error":"Erro interno no processamento"}
     
 
 def buscar_id(entidade, nome):
@@ -245,7 +248,7 @@ def buscar_id(entidade, nome):
                 id_entidade = "idGrupo"
 
             case _:
-                return "Entidade não encontrada"
+                return {"error":"Entidade não encontrada"}
 
         # Envia a requisição para a url
         response = requests.get(url, timeout=10)
@@ -266,7 +269,7 @@ def buscar_id(entidade, nome):
 
     except requests.exceptions.RequestException as e:
         print(f"Erro ao buscar ID para o item: {e}")
-        return "Falha ao buscar ID para o item."
+        return {"error":"Falha ao buscar ID para o item"}
 
 
 def executar_acao(entidade, acao, id):
@@ -275,26 +278,26 @@ def executar_acao(entidade, acao, id):
         match entidade:
             case "Dispositivo":
                 if (acao != "ligar") and (acao != "desligar"):
-                    return "Ação não identificada para dispositivos"
+                    return {"error":"Ação não identificada para dispositivos"}
 
                 url = f"http://31.97.22.121:8080/dispositivos/{id}/{acao}"
                 
             case "Cena":
                 if (acao != "ligar") and (acao != "desligar"):
-                    return "Ação não identificada para cenas"
+                    return {"error":"Ação não identificada para cenas"}
                 
                 url = f"http://31.97.22.121:8080/cenas/{id}/{acao}"
 
             case "AcaoCena":
                 if acao != "executar":
-                    return "Ação não identificada para ações de cenas"
+                    return {"error":"Ação não identificada para ações de cenas"}
                 
                 url = f"http://31.97.22.121:8080/acaocenas/{id}/{acao}"
                 
             # A entidade Grupo possui execução própria pois sua requisição é com método POST
             case "Grupo":
                 if (acao != "ligar") and (acao != "desligar"):
-                    return "Ação não identificada para grupos"
+                    return {"error":"Ação não identificada para grupos"}
                 
                 url = f"http://31.97.22.121:8080/grupos/{id}/{acao}"
 
@@ -305,10 +308,10 @@ def executar_acao(entidade, acao, id):
                 response_grupo.raise_for_status()
 
                 # Retorna o texto da resposta da ação executada
-                return response_grupo.text
+                return response_grupo.json()
 
             case _:
-                return "Entidade não encontrada"
+                return {"error":"Entidade não encontrada"}
         
         # Envia a requisição para a url
         response = requests.put(url, timeout=10)
@@ -317,17 +320,17 @@ def executar_acao(entidade, acao, id):
         response.raise_for_status()
 
         # Retorna o texto da resposta da ação executada
-        return response.text
+        return response.json()
 
     except HTTPError as http_err:
         if http_err.response.status_code == 400:
-            return http_err.response.text
+            return json.loads(http_err.response.text)
         else:
-            return f"Erro HTTP inesperado: {http_err.response.status_code} - {http_err.response.text}"
+            return {"error":"Erro HTTP inesperado"}
 
     except requests.exceptions.RequestException as e:
         print(f"Erro ao conectar com a API de ação: {e}")
-        return "Falha ao executar ação."
+        return {"error":"Falha ao executar ação"}
 
 
 @app.route('/processar-audio', methods=['POST'])
@@ -345,13 +348,9 @@ def processar_audio():
     
     # Envia o arquivo de áudio para o prompt e armazena a resposta
     response = enviar_prompt_audio(file)
-
-    # Verifica se houve um erro durante a configuração do prompt
-    if "Erro interno" in response:
-        return jsonify({"error": response}), 500
     
     # Retorna a resposta do prompt enviado
-    return jsonify({"text": response})
+    return jsonify(response)
 
 
 if __name__ == "__main__":
